@@ -89,6 +89,7 @@ def test_kmer_matrix_shape():
 
 
 # ----------------------------------------------------------------------------- metrics and head
+@pytest.mark.filterwarnings("ignore:Best ridge alpha")
 def test_ridge_head_recovers_linear_signal():
     rng = np.random.default_rng(0)
     W = rng.normal(size=(20, 3))
@@ -150,3 +151,12 @@ def test_end_to_end_kmer_baseline_on_synthetic(tmp_path):
     assert r["test"]["mean"]["pearson"] > 0.5   # motif signal must be recovered
     run("scripts/compare.py", "--results-dir", str(results))
     assert (results / "summary.csv").exists() and (results / "figures" / "main.png").exists()
+
+
+def test_alpha_at_grid_edge_is_flagged():
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(60, 5))
+    y = rng.normal(size=(60, 2))          # pure noise: the strongest penalty wins
+    with pytest.warns(UserWarning, match="edge"):
+        _, _, sel = evaluate.fit_ridge_head(X[:40], y[:40], X[40:], y[40:], alphas=(0.1, 1.0, 10.0))
+    assert sel["alpha_at_grid_edge"] is True

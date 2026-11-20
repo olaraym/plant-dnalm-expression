@@ -8,6 +8,7 @@ changes between runs is the features, so differences in the test scores come fro
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +17,7 @@ from sklearn.linear_model import Ridge
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 
-DEFAULT_ALPHAS = tuple(10.0 ** np.arange(-2, 5))
+DEFAULT_ALPHAS = tuple(10.0 ** np.arange(-2, 8))  # 0.01 ... 1e7
 
 
 def per_output_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
@@ -52,7 +53,10 @@ def fit_ridge_head(
         scores[float(a)] = per_output_metrics(y_valid, model.predict(Xva))["mean"]["pearson"]
     best = max(scores, key=lambda a: -np.inf if np.isnan(scores[a]) else scores[a])
     model = Ridge(alpha=best).fit(Xtr, y_train)
-    return scaler, model, {"alpha": best, "valid_pearson_by_alpha": scores}
+    at_edge = best in (min(alphas), max(alphas))
+    if at_edge:
+        warnings.warn(f"Best ridge alpha ({best:g}) is at the edge of the search grid; widen the grid.")
+    return scaler, model, {"alpha": best, "alpha_at_grid_edge": at_edge, "valid_pearson_by_alpha": scores}
 
 
 def evaluate_features(features: dict[str, np.ndarray], task: dict, alphas=DEFAULT_ALPHAS) -> dict:
