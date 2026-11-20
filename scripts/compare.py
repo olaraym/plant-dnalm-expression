@@ -11,6 +11,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from _common import ROOT  # noqa: E402
@@ -45,14 +46,24 @@ def main():
     groups = list(po.groupby(["species", "n_train"]))
     fig, axes = plt.subplots(1, len(groups), figsize=(6 * len(groups), 4), squeeze=False)
     for ax, ((species, n_train), g) in zip(axes[0], groups):
-        wide = g.pivot_table(index="output", columns="model", values="spearman")
-        order = wide.mean().sort_values(ascending=False).index
-        wide[order].plot(kind="bar", ax=ax, width=0.8, rot=0)
+        order = g.groupby("model")["spearman"].mean().sort_values(ascending=False).index.tolist()
+        n_out = g["output"].nunique()
+        if n_out <= 12:  # few outputs: one bar per output and model
+            wide = g.pivot_table(index="output", columns="model", values="spearman")
+            wide[order].plot(kind="bar", ax=ax, width=0.8, rot=0)
+            ax.set_xlabel("Expression output (tissue / condition)")
+            ax.legend(title="Features", fontsize=8)
+        else:  # many outputs (e.g. 56 tissues): distribution per model, one dot per output
+            data = [g.loc[g["model"] == m, "spearman"].dropna().to_numpy() for m in order]
+            ax.boxplot(data, widths=0.5, showfliers=False)
+            for i, d in enumerate(data, start=1):
+                jitter = (np.arange(len(d)) % 9 - 4) * 0.03
+                ax.scatter(i + jitter, d, s=10, alpha=0.6)
+            ax.set_xticks(range(1, len(order) + 1), order, rotation=15)
+            ax.set_xlabel(f"Features (each dot = one of {n_out} expression outputs)")
         ax.set_title(f"{species.replace('_', ' ')} (n_train = {n_train})")
-        ax.set_xlabel("Expression output (tissue / condition)")
         ax.set_ylabel("Test Spearman rho")
         ax.axhline(0, color="grey", lw=0.8)
-        ax.legend(title="Features", fontsize=8)
     fig.tight_layout()
     fig_dir = res_dir / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)

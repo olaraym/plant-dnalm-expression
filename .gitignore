@@ -19,3 +19,4 @@ __pycache__/
 data/embeddings/
 data/synthetic/
 results/synthetic/
+.venv/
