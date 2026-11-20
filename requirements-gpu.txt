@@ -1,0 +1,7 @@
+# Extra packages for the GPU step (Google Colab already has torch, numpy, pandas, scikit-learn).
+transformers
+huggingface_hub
+tqdm
+# PlantCaduceus is built on Mamba and needs these CUDA packages (they can take several minutes to build):
+mamba-ssm
+causal-conv1d

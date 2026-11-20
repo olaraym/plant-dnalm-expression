@@ -1,0 +1,17 @@
+# CPU environment: data download, k-mer baseline, ridge head, figures, tests.
+# The GPU step (embedding extraction) runs on Google Colab with requirements-gpu.txt.
+name: plant-dnalm-expression
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - pytest
+  - tqdm
+  - pip
+  - pip:
+      - huggingface_hub
