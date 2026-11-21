@@ -44,7 +44,8 @@ def main():
     # Figure: per-output Spearman for each model, one panel per species/training size.
     po = pd.DataFrame(per_output)
     groups = list(po.groupby(["species", "n_train"]))
-    fig, axes = plt.subplots(1, len(groups), figsize=(6 * len(groups), 4), squeeze=False)
+    # sharey=True: every panel uses the same y scale, so equal heights mean equal scores.
+    fig, axes = plt.subplots(1, len(groups), figsize=(6 * len(groups), 4), squeeze=False, sharey=True)
     for ax, ((species, n_train), g) in zip(axes[0], groups):
         order = g.groupby("model")["spearman"].mean().sort_values(ascending=False).index.tolist()
         n_out = g["output"].nunique()
@@ -62,8 +63,12 @@ def main():
             ax.set_xticks(range(1, len(order) + 1), order, rotation=15)
             ax.set_xlabel(f"Features (each dot = one of {n_out} expression outputs)")
         ax.set_title(f"{species.replace('_', ' ')} (n_train = {n_train})")
-        ax.set_ylabel("Test Spearman rho")
+        if ax is axes[0][0]:
+            ax.set_ylabel("Test Spearman rho")
+        ax.yaxis.set_tick_params(labelleft=True)  # keep the numbers on every panel
         ax.axhline(0, color="grey", lw=0.8)
+    top = po["spearman"].max()
+    axes[0][0].set_ylim(min(0, po["spearman"].min()) - 0.02, top + 0.05)
     fig.tight_layout()
     fig_dir = res_dir / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
