@@ -160,3 +160,18 @@ def test_alpha_at_grid_edge_is_flagged():
     with pytest.warns(UserWarning, match="edge"):
         _, _, sel = evaluate.fit_ridge_head(X[:40], y[:40], X[40:], y[40:], alphas=(0.1, 1.0, 10.0))
     assert sel["alpha_at_grid_edge"] is True
+
+
+def test_max_tokens_uses_tightest_limit():
+    class Tok:
+        model_max_length = 1000
+    class Cfg:
+        max_position_embeddings = 1002
+    class Model:
+        config = Cfg()
+    assert embed.max_tokens(Tok(), Model()) == 1000      # min(1000, 1002 - 2)
+    Tok.model_max_length = int(1e30)                     # "no limit" sentinel is ignored
+    assert embed.max_tokens(Tok(), Model()) == 1000      # falls back to 1002 - 2
+    class Bare:
+        pass
+    assert embed.max_tokens(Bare(), Bare()) is None

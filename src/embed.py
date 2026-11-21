@@ -68,6 +68,23 @@ def aggregate_windows(window_vectors: np.ndarray, owner: np.ndarray, n_sequences
     return (sums / counts).astype(np.float32)
 
 
+def max_tokens(tokenizer, model) -> int | None:
+    """Longest token sequence the model accepts, or None if it reports no limit.
+
+    6-mer tokenizers (AgroNT) split any k-mer containing N into single letters, so a 6 kb window
+    with Ns can exceed the model's context; over-long inputs crash on GPU with a device-side assert.
+    ESM-style models offset positions by 2, so the usable length is max_position_embeddings - 2.
+    """
+    limits = []
+    mml = getattr(tokenizer, "model_max_length", None)
+    if isinstance(mml, int) and 0 < mml < 100_000:   # tokenizers without a limit report a huge number
+        limits.append(mml)
+    mpe = getattr(getattr(model, "config", None), "max_position_embeddings", None)
+    if isinstance(mpe, int) and mpe > 2:
+        limits.append(mpe - 2)
+    return min(limits) if limits else None
+
+
 # ----------------------------------------------------------------------------- model call
 def load_model(name: str, device: str = "cuda"):
     """Load tokenizer and model for a preset in MODELS (downloads from Hugging Face on first use)."""
@@ -98,6 +115,10 @@ def embed_sequences(seqs, tokenizer, model, window_bp: int, batch_size: int = 16
     owner = np.asarray(owner)
 
     accepts_mask = "attention_mask" in inspect.signature(model.forward).parameters
+    limit = max_tokens(tokenizer, model)
+    n_with_n = sum(any(c not in "ACGT" for c in w) for w in all_windows)
+    if progress:
+        print(f"{len(all_windows)} windows; {n_with_n} contain non-ACGT bases; token limit = {limit}")
     iterator = range(0, len(all_windows), batch_size)
     if progress:
         try:
@@ -110,7 +131,10 @@ def embed_sequences(seqs, tokenizer, model, window_bp: int, batch_size: int = 16
     with torch.inference_mode():
         for start in iterator:
             batch = all_windows[start : start + batch_size]
-            enc = tokenizer(batch, return_tensors="pt", padding=True)
+            if limit:
+                enc = tokenizer(batch, return_tensors="pt", padding=True, truncation=True, max_length=limit)
+            else:
+                enc = tokenizer(batch, return_tensors="pt", padding=True)
             kwargs = {"input_ids": enc["input_ids"].to(device), "output_hidden_states": True}
             mask = enc.get("attention_mask")
             if accepts_mask and mask is not None:
