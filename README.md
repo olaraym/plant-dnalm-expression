@@ -70,7 +70,7 @@ Source files: [`results/summary.csv`](results/summary.csv) (one row per model) a
 
 **Checks**
 
-- The k=6 baseline gave identical scores on a laptop and on Colab, so the pipeline is reproducible across machines.
+- The k=6 baseline gave identical scores on powershell run on my local computer and on Colab, so the pipeline is reproducible across machines.
 - The first k-mer runs chose the largest alpha in the original grid (10⁴). The grid was widened to 10⁷ and the code
   now warns if the chosen alpha sits on an edge; every alpha in the table is inside the grid.
 
