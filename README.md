@@ -74,7 +74,7 @@ Source files: [`results/summary.csv`](results/summary.csv) (one row per model) a
 
 **Checks**
 
-- The k=6 baseline gave identical scores on a laptop and on Colab, so the pipeline is reproducible across machines.
+- The k=6 baseline gave identical scores on powershell run on my local computer and on Colab, so the pipeline is reproducible across machines.
 - [`notebooks/local_walkthrough.ipynb`](notebooks/local_walkthrough.ipynb) reruns every step on a laptop from the saved
   embeddings and reproduces the table exactly; it also computes the per-output comparison and the bootstrap interval
   ([`results/walkthrough/`](results/walkthrough/)).
