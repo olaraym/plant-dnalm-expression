@@ -12,7 +12,8 @@ for crops. A model is only useful for that if it captures more than a k-mer coun
 
 **Headline:** frozen embeddings from the plant DNA language model AgroNT predicted expression across 56 tissues and
 conditions far better than k-mer features: mean test Spearman ρ **0.577 vs. 0.339** on the same 5,000 training genes.
-They also beat k-mers trained on five times more genes (0.377).
+They also beat k-mers trained on five times more genes (0.377). The gain is 0.238 (95% bootstrap CI 0.212–0.264),
+and AgroNT wins on all 56 outputs.
 
 ## Data
 
@@ -62,8 +63,11 @@ Source files: [`results/summary.csv`](results/summary.csv) (one row per model) a
 
 - **A large gain from pretraining.** On identical training data, AgroNT raised mean Spearman from 0.339 to 0.577,
   and R² from 0.088 to 0.313: about 3.5 times more of the between-gene variation in expression explained.
-- **Consistent across tissues.** AgroNT's lowest-scoring output (Spearman about 0.45) still beats the highest-scoring
-  output of every k-mer model (about 0.39), so it wins on all 56 outputs.
+- **Not a fluke of the test set.** Resampling the 3,402 test genes 300 times gives a gain of **0.238, 95% CI 0.212–0.264**.
+  The interval is far from zero.
+- **Consistent across tissues.** AgroNT wins on **56 of 56** outputs, with per-output gains from 0.12 to 0.28 (median 0.24).
+  Its lowest output (ρ = 0.449) beats the highest output of every k-mer model, including k = 6 trained on all
+  25,731 genes (0.429).
 - **Pretraining beats more data.** AgroNT with 5,000 genes beats k-mers trained on 25,731 genes (0.577 vs. 0.377).
 - **k-mer size trades off against data.** With 5,000 genes, k=6 ranks genes best but has a lower R² than k=5: heavy
   regularization (alpha = 100,000) shrinks its predictions toward the mean.
@@ -71,18 +75,29 @@ Source files: [`results/summary.csv`](results/summary.csv) (one row per model) a
 **Checks**
 
 - The k=6 baseline gave identical scores on a laptop and on Colab, so the pipeline is reproducible across machines.
+- [`notebooks/local_walkthrough.ipynb`](notebooks/local_walkthrough.ipynb) reruns every step on a laptop from the saved
+  embeddings and reproduces the table exactly; it also computes the per-output comparison and the bootstrap interval
+  ([`results/walkthrough/`](results/walkthrough/)).
 - The first k-mer runs chose the largest alpha in the original grid (10⁴). The grid was widened to 10⁷ and the code
   now warns if the chosen alpha sits on an edge; every alpha in the table is inside the grid.
 
 **Limitations**
 
-- One species, one random training subset, one seed. A bootstrap confidence interval on the gain is planned.
+- One species, one random training subset, one seed.
 - Frozen features with a linear head: no fine-tuning. The published AgroNT results come from fine-tuning, so they are
   an upper reference, not a like-for-like comparison.
 - 7 of the 6,803 validation and test windows contain non-ACGT bases. With 6-mer tokens these exceed AgroNT's
   1,024-token context and were truncated at that limit.
 - PlantCaduceus was not run: its `mamba-ssm` and `causal-conv1d` CUDA packages had no prebuilt build for the free Colab
   runtime and did not finish compiling after 35 minutes. Planned on the NC State HPC cluster.
+
+**What the predictions show** ([`results/walkthrough/walkthrough_comparison.png`](results/walkthrough/walkthrough_comparison.png))
+
+- Many test genes have observed expression of exactly 0, and the lowest non-zero values fall on a few discrete levels
+  (about 0.69, 1.10, 1.39), a pattern consistent with a log(count + 1) transform. Both models struggle to pick out the
+  unexpressed genes.
+- AgroNT's predictions span a wider range than the k-mer model's (whose strong penalty shrinks them toward the mean),
+  which is why its R² is much higher. As a linear model it can predict values below 0, which are impossible on this scale.
 
 **Compute**
 
@@ -115,6 +130,9 @@ python scripts/compare.py
 ```
 
 On Windows without `make`, run the commands inside the Makefile directly with your environment's Python.
+
+To see every step's input and output on a laptop (no GPU needed once the embeddings are saved), open
+[`notebooks/local_walkthrough.ipynb`](notebooks/local_walkthrough.ipynb).
 
 ## Layout
 
